@@ -127,36 +127,65 @@ def parse_markdown_itinerary(markdown_text: str) -> tuple[List[Dict[str, str]], 
 def create_ics_file(itinerary_items: List[Any]) -> str:
     """
     Create an ICS file content for the itinerary.
+    Consolidates all items into a single 'Day Outing' event.
     Expects a list of ItineraryItem objects or dictionaries.
     """
     ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Local Discovery Agent//EN\n"
+    
+    if not itinerary_items:
+        return ics_content + "END:VCALENDAR"
+
+    valid_times = []
+    description_lines = ["Here is your plan for the day:\\n"]
     
     for item in itinerary_items:
         # Handle both Pydantic models and dictionaries
         if hasattr(item, 'name'):
             name = item.name
             address = item.address
-            description = item.description
+            desc = item.description
             start_str = item.start_time
             end_str = item.end_time
         else:
             name = item.get("name", "Event")
             address = item.get("address", "")
-            description = item.get("description", "")
+            desc = item.get("description", "")
             start_str = item.get("start_time", "")
             end_str = item.get("end_time", "")
             
-        start_time = parse_time_to_ics_format(start_str)
-        end_time = parse_time_to_ics_format(end_str)
+        start_ics = parse_time_to_ics_format(start_str)
+        end_ics = parse_time_to_ics_format(end_str)
         
-        if start_time and end_time:
-            ics_content += "BEGIN:VEVENT\n"
-            ics_content += f"SUMMARY:{name}\n"
-            ics_content += f"DTSTART:{start_time}\n"
-            ics_content += f"DTEND:{end_time}\n"
-            ics_content += f"DESCRIPTION:{description}\n"
-            ics_content += f"LOCATION:{address}\n"
-            ics_content += "END:VEVENT\n"
+        if start_ics and end_ics:
+            valid_times.append((start_ics, end_ics))
+            
+        # Append to description
+        description_lines.append(f"• {name} ({start_str} - {end_str})")
+        if address:
+            description_lines.append(f"  📍 {address}")
+        if desc:
+            description_lines.append(f"  📝 {desc}")
+        description_lines.append("\\n")  # Add spacing between items
+
+    if valid_times:
+        # Find earliest start and latest end
+        # Format is YYYYMMDDTHHMMSS, so string sort works for chronological order
+        valid_times.sort(key=lambda x: x[0])
+        earliest_start = valid_times[0][0]
+        
+        # Sort by end time to get the absolute latest time
+        valid_times.sort(key=lambda x: x[1])
+        latest_end = valid_times[-1][1]
+        
+        full_description = "".join(description_lines)
+        
+        ics_content += "BEGIN:VEVENT\n"
+        ics_content += "SUMMARY:🗺️ Day Outing (Local Discovery AI)\n"
+        ics_content += f"DTSTART:{earliest_start}\n"
+        ics_content += f"DTEND:{latest_end}\n"
+        ics_content += f"DESCRIPTION:{full_description}\n"
+        ics_content += "LOCATION:Multiple Locations\n"
+        ics_content += "END:VEVENT\n"
             
     ics_content += "END:VCALENDAR"
     return ics_content
@@ -171,7 +200,7 @@ def create_pdf_file(itinerary_items: List[Any], summary: str) -> bytes:
     
     # Helper to sanitize text for FPDF (Latin-1 only)
     def sanitize(text):
-        return text.encode('latin-1', 'replace').decode('latin-1')
+        return text.encode('latin-1', 'ignore').decode('latin-1')
 
     # Title
     pdf.set_font("Arial", style="B", size=16)

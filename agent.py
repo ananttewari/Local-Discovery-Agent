@@ -31,12 +31,7 @@ def get_agent():
             "     🕒 Start Time - End Time (e.g., 10:00 AM - 12:00 PM)",
             "     Brief description of why this place fits.",
             "   - **NO JSON**: Do not output JSON. Use pure Markdown.",
-            "   - End with a '📝 Summary' section.",
-            "",
-            "### CRITICAL SYSTEM INSTRUCTIONS ###",
-            "- **TOOL CALLING**: You MUST use the standard function calling format (e.g., `search_places(...)`).",
-            "- **PROHIBITED**: DO NOT use XML tags like `<function=...>` or `<tool_code>`. This will cause a system error.",
-            "- **PROHIBITED**: DO NOT use any tools other than `search_places`. Do not use `get_top_places_by_interest`."
+            "   - End with a '📝 Summary' section."
         ],
         markdown=True
     )
